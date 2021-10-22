@@ -29,7 +29,6 @@ module "external_service" {
     http_health_check_path = "/"
     http_health_check_port = "80"
     external = true
-    min_replicas = 2
 
     versions = {
         "hello-app-v2" = {
@@ -53,7 +52,6 @@ module "internal_service" {
     http_health_check_path = "/"
     http_health_check_port = "80"
     external = false
-    min_replicas = 2
     versions = {
         "hello-app-v2" = {
             container_image = data.google_container_registry_image.hello-app-v2

@@ -1,3 +1,7 @@
+locals {
+    name = "${var.t8s_service}-${var.t8s_version}"
+}
+
 data "google_compute_image" "cos" {
     // https://cloud.google.com/container-optimized-os/docs/release-notes
     family = "cos-93-lts"
@@ -9,11 +13,12 @@ resource "google_compute_instance_template" "template" {
         create_before_destroy = true
     }
 
-    name_prefix = "t8s-${var.name}-"
+    name_prefix = "t8s-${local.name}-"
     tags = length(var.tags) > 0 ? var.tags : null
     labels = {
         // labels must be [a-z0-9_-] and at most 63 characters
-        t8s-service = var.name
+        t8s-service = var.t8s_service
+        t8s-service-version = "${var.t8s_service}-${var.t8s_version}"
         container-vm = data.google_compute_image.cos.name
         container-image-project = var.container_image.project
         container-image-name = replace(var.container_image.name, "/[:.]/", "-")
@@ -32,7 +37,7 @@ resource "google_compute_instance_template" "template" {
     metadata = {
         user-data = templatefile("${path.module}/gce_cloud-init.tmpl.yaml",
             {
-                service_name = var.name
+                service_name = local.name
                 container_image_name = var.container_image.image_url
                 host_to_container_ports = var.host_to_container_ports
                 args = var.args != null ? var.args : []

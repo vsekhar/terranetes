@@ -1,4 +1,8 @@
-variable "name" {
+variable "t8s_service" {
+    type = string
+}
+
+variable "t8s_version" {
     type = string
 }
 

@@ -62,7 +62,8 @@ module "container_vm_template" {
     for_each = var.versions
 
     source = "../vm"
-    name = "${var.name}-${each.key}"
+    t8s_service = var.name
+    t8s_version = each.key
     container_image = each.value["container_image"]
     args = each.value["args"]
     env = each.value["env"]
@@ -79,13 +80,7 @@ module "container_vm_template" {
 //                                \ region health check   |- autoscaler (common)
 //                                  (common)               \ global health check (common)
 
-data "google_client_config" "current" {}
-
 resource "google_compute_region_instance_group_manager" "rigm" {
-    // these seem to be required for this resource...
-    // project = data.google_client_config.current.project
-    // region = data.google_client_config.current.region
-
     name = "t8s-${var.name}"
     base_instance_name = "t8s-${var.name}"
     auto_healing_policies {
@@ -109,11 +104,7 @@ resource "google_compute_region_instance_group_manager" "rigm" {
 }
 
 resource "google_compute_region_autoscaler" "autoscaler" {
-    // these seem to be required for this resource...
-    // project = data.google_client_config.current.project
-    // region = data.google_client_config.current.region
-
-    // TODO: is the below still needed?
+    // TODO: is the below still needed for pubsub scaling?
     // provider = google-beta // for filter and single_instance_assignment
 
     name = "t8s-${var.name}"
@@ -195,6 +186,8 @@ resource "google_compute_forwarding_rule" "internal_forwarding_rule" {
     backend_service = google_compute_region_backend_service.be.id
     load_balancing_scheme = "INTERNAL"
     all_ports = true
+
+    // If service_label is not set, an internal DNS name is not created.
     service_label = "lb" // --> lb.t8s-groupname-servicename.il4.region.lb.projectID.internal
 }
 
