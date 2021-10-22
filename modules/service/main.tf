@@ -1,5 +1,4 @@
 resource "google_project_service" "project_services" {
-    // TODO: move this into t8s?
     for_each = toset([
         "compute.googleapis.com",
         "endpoints.googleapis.com",
