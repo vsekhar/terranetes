@@ -170,7 +170,7 @@ resource "google_compute_firewall" "allow_health_checks" {
 }
 
 resource "google_compute_region_backend_service" "be" {
-    name = "svc-${var.name}"
+    name = "t8s-${var.name}"
     health_checks = [google_compute_region_health_check.hc.id]
     load_balancing_scheme = var.external ? "EXTERNAL" : "INTERNAL"
     backend {
@@ -181,7 +181,7 @@ resource "google_compute_region_backend_service" "be" {
 resource "google_compute_forwarding_rule" "external_forwarding_rule" {
     for_each = var.external ? {0: ""} : {} // dynamic resources need a key
 
-    name = "svc-${var.name}"
+    name = "t8s-${var.name}"
     backend_service = google_compute_region_backend_service.be.id
     port_range = "1-65535" // prevent perpetual diffs which force replacement
 }
@@ -189,19 +189,19 @@ resource "google_compute_forwarding_rule" "external_forwarding_rule" {
 resource "google_compute_forwarding_rule" "internal_forwarding_rule" {
     for_each = var.external ? {} : {0: ""} // dynamic resources need a key
 
-    name = "svc-${var.name}"
+    name = "t8s-${var.name}"
     network = var.network
     subnetwork = var.subnetwork
     backend_service = google_compute_region_backend_service.be.id
     load_balancing_scheme = "INTERNAL"
     all_ports = true
-    service_label = "lb" // --> lb.svc-groupname-servicename.il4.region.lb.projectID.internal
+    service_label = "lb" // --> lb.t8s-groupname-servicename.il4.region.lb.projectID.internal
 }
 
 resource "google_compute_firewall" "allow-external" {
     for_each = var.external ? {0: ""} : {} // dynamic resources need a key
 
-    name = "svc-${var.name}-allow-external"
+    name = "t8s-${var.name}-allow-external"
     network = var.network
     allow {
         protocol = "tcp"
@@ -212,7 +212,7 @@ resource "google_compute_firewall" "allow-external" {
 resource "google_compute_firewall" "allow-internal" {
     for_each = var.external ? {} : {0: ""} // dynamic resources need a key
 
-    name = "svc-${var.name}-allow-internal"
+    name = "t8s-${var.name}-allow-internal"
     network = var.network
 
     // copied from default-allow-internal
