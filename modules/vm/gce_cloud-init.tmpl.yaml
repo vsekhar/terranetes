@@ -40,7 +40,7 @@ write_files:
     ExecStartPre=/usr/bin/docker pull ${container_image_name}
     %{~ endif ~}
     ExecStart=/usr/bin/docker run --name=${service_name} \
-              --log-opt tag=\"${container_image_name}#{{.Name}}\" \
+              --log-opt tag="${container_image_name}#{{.Name}}" \
               --rm \
               --user 2000 \
               %{~ for host_port, container_port in host_to_container_ports ~}
