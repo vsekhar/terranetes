@@ -1,0 +1,104 @@
+#cloud-config
+
+users:
+- name: ${service_name}
+  uid: 2000
+
+write_files:
+
+%{ if length(host_to_container_ports) > 0 ~}
+# https://cloud.google.com/container-optimized-os/docs/how-to/firewall
+- path: /etc/systemd/system/config-firewall.service
+  permissions: 0644
+  owner: root
+  content: |
+    [Unit]
+    Description=Configures the host firewall
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=true
+    ExecStart=/sbin/iptables -A INPUT -p tcp \
+              %{~ for host_port, c in host_to_container_ports ~}
+              --match multiport --dports ${host_port} \
+              %{~ endfor ~}
+              -j ACCEPT
+%{ endif ~}
+
+- path: /etc/systemd/system/${service_name}.service
+  permissions: 0644
+  owner: root
+  content: |
+    [Unit]
+    Description=${service_name} service
+
+    [Service]
+    Restart=always
+    Environment="HOME=/home/${service_name}"
+    ExecStartPre=/usr/bin/docker-credential-gcr configure-docker --registries=gcr.io
+    %{~ if length(split("@", container_image_name)) != 2 ~}
+    ExecStartPre=/usr/bin/docker pull ${container_image_name}
+    %{~ endif ~}
+    ExecStart=/usr/bin/docker run --name=${service_name} \
+              --log-opt tag=\"${container_image_name}#{{.Name}}\" \
+              --rm \
+              --user 2000 \
+              %{~ for host_port, container_port in host_to_container_ports ~}
+              --publish ${host_port}:${container_port} \
+              %{~ endfor ~}
+              %{~ for name, value in env ~}
+              --env ${name}=${value} \
+              %{~ endfor ~}
+            ${container_image_name} \
+              %{~ for arg in args ~}
+              ${ arg } \
+              %{~ endfor }
+    ExecStop=/usr/bin/docker stop ${service_name}
+    ExecStopPost=-/usr/bin/docker rm ${service_name}
+
+%{ if envoy_config != null ~}
+- path: /etc/systemd/system/envoy.service
+  permissions: 0644
+  owner: root
+  content: |
+    [Unit]
+    Description=Envoy
+
+    [Service]
+    Restart=always
+    Environment="HOME=/home/envoy"
+    # ExecStartPre=/usr/bin/docker-credential-gcr configure-docker --registries=gcr.io
+    ExecStart=/usr/bin/docker run --name=envoy \
+                                  --log-opt tag=\"envoy\" \
+                                  --rm \
+                                  --user 2000 \
+                                  --net container:${service_name} \
+                                  gcr.io/endpoints-release/endpoints-runtime:2 \
+                                  --service ${envoy_config.service_name} \
+                                  --listener_port ${envoy_config.envoy_service_port} \
+                                  --backend grpc://127.0.0.1:${envoy_config.backend_service_port} \
+                                  --rollout_strategy managed
+    ExecStop=/usr/bin/docker stop envoy
+    ExecStopPost=/usr/bin/docker rm envoy
+%{ else ~}
+# No envoy_config provided. Envoy will not be deployed.
+%{ endif ~}
+
+runcmd:
+- systemctl daemon-reload
+%{ if false ~}
+- systemctl start docker-credential-gcr.service
+%{ endif ~}
+%{ if length(host_to_container_ports) > 0 ~}
+- systemctl start config-firewall.service
+%{ endif ~}
+- systemctl start ${service_name}.service
+%{ if envoy_config != null ~}
+- systemctl start envoy.service
+%{ endif ~}
+
+# Optional once-per-boot setup. For example: mounting a PD.
+# bootcmd:
+# - fsck.ext4 -tvy /dev/[DEVICE_ID]
+# - mkdir -p /mnt/disks/[MNT_DIR]
+# - mount -t ext4 -O ... /dev/[DEVICE_ID] /mnt/disks/[MNT_DIR]
