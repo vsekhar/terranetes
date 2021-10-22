@@ -1,3 +1,64 @@
+resource "google_project_service" "project_services" {
+    // TODO: move this into t8s?
+    for_each = toset([
+        "compute.googleapis.com",
+        "endpoints.googleapis.com",
+        "iam.googleapis.com",
+        "pubsub.googleapis.com",
+        // "servicecontrol.googleapis.com", # for cloud endpoints
+        // "servicemanagement.googleapis.com", # for cloud endpoints
+    ])
+
+    service = each.key
+    disable_on_destroy = false
+}
+
+resource "google_service_account" "service_accounts" {
+    for_each = var.versions
+    
+    account_id = "t8s-${var.name}-${each.key}"
+    display_name = "t8s-${var.name}-${each.key}"
+}
+
+locals {
+    t8s_roles = [
+        "roles/logging.logWriter",
+        "roles/monitoring.metricWriter",
+        "roles/cloudtrace.agent",
+        "roles/servicemanagement.serviceController",
+    ]
+    t8s_sa_roles = flatten([
+        for k, v in var.versions: [
+            for r in local.t8s_roles: {
+                role = r 
+                service_account = google_service_account.service_accounts[k].email
+            }
+        ]
+    ])
+
+    custom_sa_roles = flatten([
+        for k, v in var.versions: [
+            for r in v.service_account_roles != null ? v.service_account_roles : []: {
+                role = r
+                service_account = google_service_account.service_accounts[k].email
+            }
+        ]
+    ])
+}
+
+resource "google_project_iam_member" "iam_t8s" {
+    for_each = { for e in local.t8s_sa_roles: e.role => e.service_account }
+
+    role = each.key
+    member = "serviceAccount:${each.value}"
+}
+
+resource "google_project_iam_member" "iam_custom" {
+    for_each = { for e in local.custom_sa_roles: e.role => e.service_account }
+
+    role = each.key
+    member = "serviceAccount:${each.value}"
+}
 module "container_vm_template" {
     for_each = var.versions
 
@@ -12,7 +73,7 @@ module "container_vm_template" {
     machine_type = each.value["machine_type"]
     network = var.network
     subnetwork = try(var.subnetwork, null)
-    service_account = each.value["service_account"]
+    service_account = google_service_account.service_accounts[each.key].email
 }
 
 // forwarding rule (int/ext) --> be service (int/ext) --> rigm (common) --> firewall (int/ext) -- > instances (common)

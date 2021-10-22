@@ -13,3 +13,7 @@ output "ip" {
 output "service_name" {
     value = local.forwarding_rule.service_name
 }
+
+output "version_service_accounts" {
+    value = google_service_account.service_accounts
+}

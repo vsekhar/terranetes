@@ -7,36 +7,6 @@ provider "google" {
     region = var.region
 }
 
-resource "google_project_service" "service" {
-    for_each = toset([
-        "compute.googleapis.com",
-        "endpoints.googleapis.com",
-        "iam.googleapis.com",
-        "pubsub.googleapis.com",
-        "servicecontrol.googleapis.com", # for cloud endpoints
-        "servicemanagement.googleapis.com", # for cloud endpoints
-    ])
-
-    service = each.key
-    disable_on_destroy = false
-}
-
-resource "google_service_account" "test" {
-    account_id = "svc-test2"
-    display_name = "Test service account"
-}
-
-resource "google_project_iam_member" "iam" {
-    for_each = toset([
-        "roles/logging.logWriter",
-        "roles/monitoring.metricWriter",
-        "roles/cloudtrace.agent",
-        "roles/servicemanagement.serviceController",
-    ])
-    role    = each.value
-    member  = "serviceAccount:${google_service_account.test.email}"
-}
-
 module "service_network" {
     source = "../../modules/simple_network"
     name = local.name
@@ -66,7 +36,6 @@ module "example_service" {
             container_image = data.google_container_registry_image.hello-app-v2
             machine_type = "e2-standard-2"
             preemptible = true
-            service_account = google_service_account.test.email
         }
     }
 }

@@ -30,7 +30,7 @@ variable "versions" {
             percent = optional(number)
         }))
         preemptible = optional(bool)
-        service_account = optional(string)
+        service_account_roles = optional(list(string))
         # envoy_config = optional(object({
         #     service_name = string
         #     envoy_service_port = string
