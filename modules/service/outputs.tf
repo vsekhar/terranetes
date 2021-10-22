@@ -10,8 +10,9 @@ output "ip" {
     value = local.forwarding_rule.ip_address
 }
 
-output "service_name" {
+output "internal_service_name" {
     value = local.forwarding_rule.service_name
+    description = "Internally-resolvable service name for an internal service (empty for external services)."
 }
 
 output "version_service_accounts" {
