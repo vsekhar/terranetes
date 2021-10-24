@@ -174,7 +174,12 @@ resource "google_compute_forwarding_rule" "external_forwarding_rule" {
 
     name = "t8s-${var.name}"
     backend_service = google_compute_region_backend_service.be.id
-    port_range = "1-65535" // prevent perpetual diffs which force replacement
+
+    ports = [for k, v in var.service_to_container_ports : k] // max 5 ports
+
+    // Use port_range below if more than 5 ports are needed (and to avoid)
+    // perpetual diffs).
+    // port_range = "1-65535" 
 }
 
 resource "google_compute_forwarding_rule" "internal_forwarding_rule" {
@@ -185,7 +190,9 @@ resource "google_compute_forwarding_rule" "internal_forwarding_rule" {
     subnetwork = var.subnetwork
     backend_service = google_compute_region_backend_service.be.id
     load_balancing_scheme = "INTERNAL"
-    all_ports = true
+
+    ports = [for k, v in var.service_to_container_ports : k] // max 5 ports
+    // all_ports = true // use if more than 5 ports are needed.
 
     // If service_label is not set, an internal DNS name is not created.
     service_label = "lb" // --> lb.t8s-groupname-servicename.il4.region.lb.projectID.internal
@@ -202,14 +209,21 @@ resource "google_compute_firewall" "allow-external" {
     }
 }
 
+data "google_compute_network" "service_network" {
+    name = var.network
+}
+
+data "google_compute_subnetwork" "service_subnetworks" {
+    for_each = toset(data.google_compute_network.service_network.subnetworks_self_links)
+    self_link = each.value
+}
+
 resource "google_compute_firewall" "allow-internal" {
     for_each = var.external ? {} : {0: ""} // dynamic resources need a key
 
     name = "t8s-${var.name}-allow-internal"
     network = var.network
-
-    // copied from default-allow-internal
-    source_ranges = [ "10.128.0.0/9" ]
+    source_ranges = [ for subnet in data.google_compute_subnetwork.service_subnetworks : subnet.ip_cidr_range ]
     priority = 65534
     direction = "INGRESS"
     allow {
