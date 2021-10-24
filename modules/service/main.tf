@@ -209,21 +209,12 @@ resource "google_compute_firewall" "allow-external" {
     }
 }
 
-data "google_compute_network" "service_network" {
-    name = var.network
-}
-
-data "google_compute_subnetwork" "service_subnetworks" {
-    for_each = toset(data.google_compute_network.service_network.subnetworks_self_links)
-    self_link = each.value
-}
-
 resource "google_compute_firewall" "allow-internal" {
     for_each = var.external ? {} : {0: ""} // dynamic resources need a key
 
     name = "t8s-${var.name}-allow-internal"
     network = var.network
-    source_ranges = [ for subnet in data.google_compute_subnetwork.service_subnetworks : subnet.ip_cidr_range ]
+    source_ranges = [ "10.128.0.0/9" ]
     priority = 65534
     direction = "INGRESS"
     allow {
