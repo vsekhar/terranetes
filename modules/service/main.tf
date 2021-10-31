@@ -167,6 +167,7 @@ resource "google_compute_region_backend_service" "be" {
     backend {
       group = google_compute_region_instance_group_manager.rigm.instance_group
     }
+    connection_draining_timeout_sec = 30
 }
 
 resource "google_compute_forwarding_rule" "external_forwarding_rule" {
@@ -229,3 +230,7 @@ resource "google_compute_firewall" "allow-internal" {
         ports = [for k, v in var.service_to_container_ports : k]
     }
 }
+
+// TODO: use traffic director
+
+// TODO: add SSL
