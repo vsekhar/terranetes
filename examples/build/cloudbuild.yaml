@@ -1,0 +1,18 @@
+# This file is necessary because the Dockerfile is not kept in the repo root.
+
+# Docker-based build (no caching)
+# steps:
+# - name: 'gcr.io/cloud-builders/docker'
+#   args: ['build', '--file', 'deploy/server/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/$_IMAGE', '.']
+# images:
+# - 'gcr.io/$PROJECT_ID/$_IMAGE'
+
+# Kaniko build (caching of intermediate containers for 2 weeks)
+steps:
+- name: 'gcr.io/kaniko-project/executor:latest'
+  args:
+  - --dockerfile=${_DOCKERFILE}
+  - --destination=${_DESTINATION}
+  - --cache=true
+  - --cache-ttl=336h
+  - --image-name-with-digest-file=hash.txt

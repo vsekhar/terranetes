@@ -1,0 +1,27 @@
+FROM golang:alpine as builder
+
+# create non-root user from here (distroless/static doesn't have a shell)
+RUN addgroup hello
+RUN adduser --disabled-password --gecos "" --no-create-home --ingroup hello hello
+
+WORKDIR /app
+
+# Get dependencies early so they can be cached by Docker
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOARCH=amd64
+ADD go.mod /app
+ADD go.sum /app
+RUN go mod download
+# RUN go mod verify
+
+# build app
+ADD . /app
+RUN go build -v -ldflags='-w -s -extldflags "-static"' -o hello-server /app/examples/hello
+
+# runtime image
+FROM gcr.io/distroless/static
+COPY --from=builder /app/hello-server /hello-server
+COPY --from=builder /etc/passwd /etc/passwd
+USER hello
+ENTRYPOINT ["/hello-server"]
