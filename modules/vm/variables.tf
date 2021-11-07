@@ -45,14 +45,12 @@ variable "tags" {
 
 // Configure the process.
 
-variable "container_image" {
-    type = object({
-        project = string
-        name = string
-        digest = string
-        image_url = string
-    })
-    description = "Container registry image data resource (e.g. 'google_container_registry_image')."
+variable "container_path" {
+    type = string
+}
+
+variable "container_digest" {
+    type = string
 }
 
 variable "args" {

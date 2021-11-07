@@ -16,12 +16,8 @@ variable "subnetwork" {
 
 variable "versions" {
     type = map(object({
-        container_image = object({
-            project = string
-            name = string
-            digest = string
-            image_url = string
-        })
+        container_path = string
+        container_digest = string
         args = optional(list(string))
         env = optional(map(string))
         machine_type = string

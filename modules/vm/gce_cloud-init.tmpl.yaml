@@ -35,7 +35,7 @@ write_files:
     [Service]
     Restart=always
     Environment="HOME=/home/${service_name}"
-    ExecStartPre=/usr/bin/docker-credential-gcr configure-docker --registries=gcr.io
+    ExecStartPre=/usr/bin/docker-credential-gcr configure-docker --registries=${registry}
     %{~ if length(split("@", container_image_name)) != 2 ~}
     ExecStartPre=/usr/bin/docker pull ${container_image_name}
     %{~ endif ~}

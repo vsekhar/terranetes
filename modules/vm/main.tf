@@ -20,13 +20,11 @@ resource "google_compute_instance_template" "template" {
         t8s-service = var.t8s_service
         t8s-service-version = "${var.t8s_service}-${var.t8s_version}"
         container-vm = data.google_compute_image.cos.name
-        container-image-project = var.container_image.project
-        container-image-name = replace(var.container_image.name, "/[:.]/", "-")
-        container-image-digest = (
-            var.container_image.digest != null
-            ? substr(replace(var.container_image.digest, "/[:]/", "-"), 0, 15)
-            : null
-        )
+        container-registry = replace(split("/", var.container_path)[0], "/[:.]/", "_")
+        container-project = split("/", var.container_path)[1]
+        container-repo = split("/", var.container_path)[2]
+        container-name = split("/", var.container_path)[3]
+        container-digest-prefix = substr(replace(var.container_digest, "/[:]/", "_"), 0, 15)
     }
     machine_type = var.machine_type
     disk {
@@ -34,11 +32,13 @@ resource "google_compute_instance_template" "template" {
         auto_delete = true
         boot = true
     }
+
     metadata = {
         user-data = templatefile("${path.module}/gce_cloud-init.tmpl.yaml",
             {
                 service_name = local.name
-                container_image_name = var.container_image.image_url
+                container_image_name = join("@", [var.container_path, var.container_digest])
+                registry = split("/", var.container_path)[0]
                 host_to_container_ports = var.host_to_container_ports
                 args = var.args != null ? var.args : []
                 env = var.env != null ? var.env : {}

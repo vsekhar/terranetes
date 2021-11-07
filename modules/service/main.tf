@@ -64,7 +64,8 @@ module "container_vm_template" {
     source = "../vm"
     t8s_service = var.name
     t8s_version = each.key
-    container_image = each.value["container_image"]
+    container_path = each.value["container_path"]
+    container_digest = each.value["container_digest"]
     args = each.value["args"]
     env = each.value["env"]
     host_to_container_ports = var.service_to_container_ports

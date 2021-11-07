@@ -13,9 +13,10 @@ module "service_network" {
     allow_outbound_internet_access = false // the default
 }
 
-data "google_container_registry_image" "hello-app-v2" {
-    project = "google-samples"
-    name = "hello-app:2.0"
+
+locals {
+    hello_container_path = "us-docker.pkg.dev/terranetes-resources/examples/hello"
+    hello_container_digest = chomp(file("../build/hello-digest.txt"))
 }
 
 module "external_service" {
@@ -30,17 +31,22 @@ module "external_service" {
     http_health_check_port = "80"
     external = true
 
+    min_replicas = 2
     versions = {
         "hello-app-v2" = {
-            container_image = data.google_container_registry_image.hello-app-v2
+            container_path = local.hello_container_path
+            container_digest = local.hello_container_digest
+            args = [
+                "-port 8080",
+                "-msg external",
+                "-downstream \"http://${module.internal_service.internal_service_name}\"",
+            ]
             machine_type = "e2-standard-2"
             preemptible = true
         }
     }
 }
 
-// Test the internal service by SSHing into a host in the above external service
-// and curling ${module.internal_service.self_link}.
 module "internal_service" {
     source = "../../modules/service"
     name = "internal-${local.name}"
@@ -52,9 +58,16 @@ module "internal_service" {
     http_health_check_path = "/"
     http_health_check_port = "80"
     external = false
+    
+    min_replicas = 2
     versions = {
         "hello-app-v2" = {
-            container_image = data.google_container_registry_image.hello-app-v2
+            container_path = local.hello_container_path
+            container_digest = local.hello_container_digest
+            args = [
+                "-port 8080",
+                "-msg internal",
+            ]
             machine_type = "e2-standard-2"
             preemptible = true
         }
