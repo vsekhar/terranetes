@@ -53,7 +53,7 @@ write_files:
               %{~ for arg in args ~}
               ${ arg } \
               %{~ endfor }
-    ExecStop=/usr/bin/docker stop ${service_name}
+    ExecStop=/usr/bin/docker stop --time 30 ${service_name}
     ExecStopPost=-/usr/bin/docker rm ${service_name}
 
 %{ if envoy_config != null ~}
