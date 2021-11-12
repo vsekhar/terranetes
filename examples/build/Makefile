@@ -1,4 +1,4 @@
-# REPO_PROJECT_ID=terranetes-resources
+PROJECT=terranetes-resources
 REGISTRY=us-docker.pkg.dev
 REPO=examples
 
@@ -6,13 +6,14 @@ REPO=examples
 
 all: hello-digest.txt
 
-%-digest.txt: %.image_on_gcr project
+%-digest.txt: %.image_on_gcr
 	gcloud container images list-tags \
+		--project ${PROJECT} \
 		--format='get(digest)' \
 		--filter=tags:latest ${REGISTRY}/${PROJECT}/${REPO}/$* \
 		> $@
 
-%.image_on_gcr: .PHONY Dockerfile.% reporoot project gomodtidy
+%.image_on_gcr: .PHONY Dockerfile.% reporoot gomodtidy
 	gcloud builds submit ${REPOROOT} \
 		--project ${PROJECT} \
 		--config ${REPOROOT}/examples/build/cloudbuild.yaml \
@@ -23,7 +24,3 @@ gomodtidy: .PHONY
 
 reporoot: .PHONY
 	$(eval REPOROOT=$(shell git rev-parse --show-toplevel))
-
-project: .PHONY
-	$(eval PROJECT=$(shell gcloud config get-value project))
-	@echo Using project ${PROJECT}
