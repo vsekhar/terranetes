@@ -20,26 +20,23 @@ var downstream = flag.String("downstream", "", "URL for downstream request")
 func main() {
 	flag.Parse()
 
+	// On GCP, OS provides hostnames like: "3b1179335f6d"
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
+	// On GCP, metadata service provides hostnames like:
+	//   "t8s-external-test-ctv7.northamerica-northeast2-b.c.fabula-8589.internal"
+	gcpHostname, err := metadata.Hostname()
+	if err != nil {
+		panic(err)
+	}
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Path: %q\n", html.EscapeString(r.URL.Path))
-
-		// On GCP, OS provides hostnames like: "3b1179335f6d"
-		hostname, err := os.Hostname()
-		if err != nil {
-			fmt.Fprintf(w, "Error: %s\n", err)
-			w.WriteHeader(500)
-		}
 		fmt.Fprintf(w, "Hostname (OS): %s\n", hostname)
-
-		// On GCP, metadata service provides hostnames like:
-		//   "t8s-external-test-ctv7.northamerica-northeast2-b.c.fabula-8589.internal"
-		gcpHostname, err := metadata.Hostname()
-		if err != nil {
-			fmt.Fprintf(w, "Error: %s\n", err)
-			w.WriteHeader(500)
-		}
 		fmt.Fprintf(w, "Hostname (Cloud): %s\n", gcpHostname)
-
 		fmt.Fprintf(w, "Message: %s\n", *msg)
 		fmt.Fprintf(w, "Time: %d\n", time.Now().UnixNano())
 		log.Printf("request: %q\n", html.EscapeString(r.URL.Path))

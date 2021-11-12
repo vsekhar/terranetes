@@ -7,6 +7,10 @@ provider "google" {
     region = var.region
 }
 
+module "service_group" {
+    source = "../../modules/group"
+}
+
 module "service_network" {
     source = "../../modules/simple_network"
     name = local.name
